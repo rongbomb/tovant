@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# env
+.env
+.env*.local
+
+# testing
+coverage/
+playwright-report/
+test-results/
+
+# local stub object storage (see src/lib/integrations/storage)
+.local-storage/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+pnpm-debug.log*
+
+# drizzle: migrations ARE committed, only local drizzle-kit state is ignored
+.drizzle/
