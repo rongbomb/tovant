@@ -1,7 +1,6 @@
 import "server-only";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "./auth";
+import { getSession } from "./get-session";
 import { dashboardPathForRole, type UserRole } from "./role-redirect";
 
 /**
@@ -11,7 +10,7 @@ import { dashboardPathForRole, type UserRole } from "./role-redirect";
  * and runs on the Node runtime since it needs Drizzle/pg.
  */
 export async function requireRole(expectedRole: UserRole) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
 
   if (!session) {
     redirect("/login");
