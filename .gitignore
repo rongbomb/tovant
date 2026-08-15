@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # drizzle: migrations ARE committed, only local drizzle-kit state is ignored
 .drizzle/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
