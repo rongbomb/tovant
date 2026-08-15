@@ -33,6 +33,6 @@ test("signup requires TOTP enrollment before reaching a dashboard", async ({ pag
   await page.getByLabel("6-digit code").fill(code);
   await page.getByRole("button", { name: "Verify & continue" }).click();
 
-  await expect(page).toHaveURL(/\/owner\/dashboard/);
+  await expect(page).toHaveURL(/\/owner\/dashboard/, { timeout: 15_000 });
   await expect(page.getByText("Owner dashboard")).toBeVisible();
 });

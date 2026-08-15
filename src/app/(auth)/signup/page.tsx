@@ -16,20 +16,25 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error: signUpError } = await authClient.signUp.email({
-      name,
-      email,
-      password,
-    });
-    setSubmitting(false);
-    if (signUpError) {
-      setError(signUpError.message ?? "Could not create your account.");
-      return;
+    try {
+      const { error: signUpError } = await authClient.signUp.email({
+        name,
+        email,
+        password,
+      });
+      if (signUpError) {
+        setError(signUpError.message ?? "Could not create your account.");
+        return;
+      }
+      // 2FA is mandatory and not yet enrolled at this point — the
+      // owner/provider/admin layout guards would redirect here anyway,
+      // but we send the user straight there to avoid an extra bounce.
+      router.push("/verify-2fa/setup");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
     }
-    // 2FA is mandatory and not yet enrolled at this point — the
-    // (owner)/(provider)/(admin) layout guards would redirect here anyway,
-    // but we send the user straight there to avoid an extra bounce.
-    router.push("/verify-2fa/setup");
   }
 
   return (

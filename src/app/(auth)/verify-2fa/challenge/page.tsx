@@ -15,20 +15,25 @@ export default function TwoFactorChallengePage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error: verifyError } = await authClient.twoFactor.verifyTotp({
-      code,
-    });
-    setSubmitting(false);
-    if (verifyError) {
-      setError(verifyError.message ?? "That code didn't work. Try again.");
-      return;
+    try {
+      const { error: verifyError } = await authClient.twoFactor.verifyTotp({
+        code,
+      });
+      if (verifyError) {
+        setError(verifyError.message ?? "That code didn't work. Try again.");
+        return;
+      }
+      const { data: session } = await authClient.getSession();
+      router.push(
+        session?.user
+          ? dashboardPathForRole((session.user as { role?: string }).role ?? "owner")
+          : "/login",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
     }
-    const { data: session } = await authClient.getSession();
-    router.push(
-      session?.user
-        ? dashboardPathForRole((session.user as { role?: string }).role ?? "owner")
-        : "/login",
-    );
   }
 
   return (

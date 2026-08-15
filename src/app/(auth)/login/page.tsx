@@ -16,26 +16,31 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { data, error: signInError } = await authClient.signIn.email({
-      email,
-      password,
-    });
-    setSubmitting(false);
-    if (signInError) {
-      setError(signInError.message ?? "Could not log in.");
-      return;
+    try {
+      const { data, error: signInError } = await authClient.signIn.email({
+        email,
+        password,
+      });
+      if (signInError) {
+        setError(signInError.message ?? "Could not log in.");
+        return;
+      }
+      if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        router.push("/verify-2fa/challenge");
+        return;
+      }
+      // No 2FA challenge needed (shouldn't normally happen once enrollment
+      // is enforced, but handle it defensively). Route-group layouts still
+      // gate on twoFactorEnabled server-side regardless of this redirect.
+      const { data: session } = await authClient.getSession();
+      router.push(
+        session?.user ? dashboardPathForRole((session.user as { role?: string }).role ?? "owner") : "/verify-2fa/setup",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
     }
-    if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
-      router.push("/verify-2fa/challenge");
-      return;
-    }
-    // No 2FA challenge needed (shouldn't normally happen once enrollment
-    // is enforced, but handle it defensively). Route-group layouts still
-    // gate on twoFactorEnabled server-side regardless of this redirect.
-    const { data: session } = await authClient.getSession();
-    router.push(
-      session?.user ? dashboardPathForRole((session.user as { role?: string }).role ?? "owner") : "/verify-2fa/setup",
-    );
   }
 
   return (

@@ -25,18 +25,23 @@ export default function TwoFactorSetupPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { data, error: enableError } = await authClient.twoFactor.enable({
-      password,
-    });
-    setSubmitting(false);
-    if (enableError) {
-      setError(enableError.message ?? "Could not start 2FA setup.");
-      return;
-    }
-    if (data) {
-      setTotpUri(data.totpURI);
-      setBackupCodes(data.backupCodes);
-      setStage("verify");
+    try {
+      const { data, error: enableError } = await authClient.twoFactor.enable({
+        password,
+      });
+      if (enableError) {
+        setError(enableError.message ?? "Could not start 2FA setup.");
+        return;
+      }
+      if (data) {
+        setTotpUri(data.totpURI);
+        setBackupCodes(data.backupCodes);
+        setStage("verify");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -44,20 +49,25 @@ export default function TwoFactorSetupPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error: verifyError } = await authClient.twoFactor.verifyTotp({
-      code,
-    });
-    setSubmitting(false);
-    if (verifyError) {
-      setError(verifyError.message ?? "That code didn't work. Try again.");
-      return;
+    try {
+      const { error: verifyError } = await authClient.twoFactor.verifyTotp({
+        code,
+      });
+      if (verifyError) {
+        setError(verifyError.message ?? "That code didn't work. Try again.");
+        return;
+      }
+      const { data: session } = await authClient.getSession();
+      router.push(
+        session?.user
+          ? dashboardPathForRole((session.user as { role?: string }).role ?? "owner")
+          : "/login",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
     }
-    const { data: session } = await authClient.getSession();
-    router.push(
-      session?.user
-        ? dashboardPathForRole((session.user as { role?: string }).role ?? "owner")
-        : "/login",
-    );
   }
 
   if (stage === "password") {
