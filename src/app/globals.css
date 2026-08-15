@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Tovant design tokens (see CLAUDE.md "Design system").
+ * Dark, premium-automotive tone — no light-mode variant by design.
+ * Font values are system-stack placeholders; swap only these three
+ * --font-* values when real fonts are provided. No component should
+ * ever reference a font name directly.
+ */
+@theme {
+  --color-void: #0b0c0e;
+  --color-graphite: #1a1c20;
+  --color-steel: #6e747c;
+  --color-ash: #f2f1ee;
+  --color-ignition: #ff6a1a;
+  --color-ember: #b8391a;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+  --font-body: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-void);
+  color: var(--color-ash);
+  font-family: var(--font-body);
 }
