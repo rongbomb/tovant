@@ -1,11 +1,13 @@
 @import "tailwindcss";
 
 /*
- * Tovant design tokens (see CLAUDE.md "Design system").
- * Dark, premium-automotive tone — no light-mode variant by design.
- * Font values are system-stack placeholders; swap only these three
- * --font-* values when real fonts are provided. No component should
- * ever reference a font name directly.
+ * Legacy dark palette, being retired in favor of the sage-green system in
+ * home.css (see CLAUDE.md "Design system"). Kept defined — not deleted —
+ * until every page that still references these tokens has been migrated,
+ * so the app never breaks mid-rollout. Once nothing under src/ uses
+ * bg-graphite/bg-void/text-ash/text-steel/text-ignition/border-steel/
+ * bg-ignition/from-ignition/to-ember, this whole @theme block and this
+ * file's body{} override should be deleted.
  */
 @theme {
   --color-void: #0b0c0e;
