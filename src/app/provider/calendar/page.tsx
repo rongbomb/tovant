@@ -1,42 +1,58 @@
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { jobs } from "@/db/schema";
+import { jobs, profiles, providerProfiles, providerUnavailableDates } from "@/db/schema";
 import { getSession } from "@/lib/auth/get-session";
+import { CalendarGrid } from "@/components/provider-dashboard/calendar-grid";
 
-// No separate calendar table — this view is just jobs filtered by
-// providerUserId and ordered by scheduledAt (see CLAUDE.md schema notes).
 export default async function ProviderCalendarPage() {
   const session = await getSession();
-  const upcoming = session
-    ? await db
-        .select()
-        .from(jobs)
-        .where(eq(jobs.providerUserId, session.user.id))
-        .orderBy(asc(jobs.scheduledAt))
-    : [];
+  if (!session) {
+    return (
+      <div className="p-8">
+        <h1 className="home-serif" style={{ fontSize: 28 }}>
+          Calendar
+        </h1>
+      </div>
+    );
+  }
+
+  const provider = await db.query.providerProfiles.findFirst({
+    where: eq(providerProfiles.userId, session.user.id),
+  });
+
+  const [scheduledJobs, unavailable] = await Promise.all([
+    db
+      .select({
+        id: jobs.id,
+        status: jobs.status,
+        scheduledAt: jobs.scheduledAt,
+        ownerName: profiles.displayName,
+      })
+      .from(jobs)
+      .leftJoin(profiles, eq(profiles.userId, jobs.ownerId))
+      .where(eq(jobs.providerUserId, session.user.id)),
+    provider
+      ? db
+          .select()
+          .from(providerUnavailableDates)
+          .where(eq(providerUnavailableDates.providerId, provider.id))
+      : Promise.resolve([]),
+  ]);
 
   return (
-    <div className="p-8">
-      <h1 className="font-display text-2xl uppercase tracking-widest text-ash">
+    <div className="flex flex-col gap-6 p-8">
+      <h1 className="home-serif" style={{ fontSize: 28 }}>
         Calendar
       </h1>
-      {upcoming.length === 0 ? (
-        <p className="mt-4 text-steel">No scheduled jobs.</p>
-      ) : (
-        <ul className="mt-6 flex flex-col gap-2">
-          {upcoming.map((job) => (
-            <li
-              key={job.id}
-              className="flex justify-between rounded border border-steel/40 bg-graphite p-3"
-            >
-              <span className="font-mono text-ash">
-                {new Date(job.scheduledAt).toLocaleString()}
-              </span>
-              <span className="text-steel">{job.status}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <CalendarGrid
+        jobs={scheduledJobs.map((j) => ({
+          id: j.id,
+          status: j.status,
+          scheduledAt: j.scheduledAt.toISOString(),
+          ownerName: j.ownerName,
+        }))}
+        unavailableDates={unavailable.map((u) => u.date)}
+      />
     </div>
   );
 }

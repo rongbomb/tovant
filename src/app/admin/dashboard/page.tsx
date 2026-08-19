@@ -1,7 +1,7 @@
 export default function AdminDashboardPage() {
   return (
     <div className="p-8">
-      <h1 className="font-display text-2xl uppercase tracking-widest text-ash">
+      <h1 className="home-serif" style={{ fontSize: 28 }}>
         Admin dashboard
       </h1>
     </div>

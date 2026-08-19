@@ -3,12 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
+import { dashboardPathForRole } from "@/lib/auth/role-redirect";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
 
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // "intent" only picks where signup lands afterward — it never sets the
+  // account's role. Role stays server-defaulted to "owner"; becoming a
+  // provider is the one reviewed role-change path at /become-a-provider.
+  const [intent, setIntent] = useState<"owner" | "provider">("owner");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,10 +34,7 @@ export default function SignupPage() {
         setError(signUpError.message ?? "Could not create your account.");
         return;
       }
-      // 2FA is mandatory and not yet enrolled at this point — the
-      // owner/provider/admin layout guards would redirect here anyway,
-      // but we send the user straight there to avoid an extra bounce.
-      router.push("/verify-2fa/setup");
+      router.push(intent === "provider" ? "/become-a-provider" : dashboardPathForRole("owner"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -38,55 +43,72 @@ export default function SignupPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl font-bold uppercase tracking-widest text-ash">
-        Create account
-      </h1>
-      {error ? <p className="text-sm text-ember">{error}</p> : null}
-      <label className="flex flex-col gap-1 text-sm text-steel">
-        Name
-        <input
-          type="text"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded border border-steel/40 bg-graphite px-3 py-2 text-ash outline-none focus:border-ignition"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm text-steel">
-        Email
-        <input
+    <Card>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <h1 className="home-serif" style={{ fontSize: 28 }}>
+          Create account
+        </h1>
+        {error ? <p style={{ color: "var(--home-danger)", fontSize: 14 }}>{error}</p> : null}
+
+        <fieldset className="flex gap-2" style={{ border: "none", padding: 0, margin: 0 }}>
+          <legend className="home-field-label" style={{ marginBottom: 6 }}>
+            I&apos;m signing up as a...
+          </legend>
+          {(["owner", "provider"] as const).map((option) => (
+            <label
+              key={option}
+              style={{
+                flex: 1,
+                cursor: "pointer",
+                borderRadius: 12,
+                border: `1px solid ${intent === option ? "var(--home-accent)" : "var(--home-line)"}`,
+                padding: "10px 12px",
+                textAlign: "center",
+                fontSize: 14,
+                color: intent === option ? "var(--home-accent)" : "var(--home-text-muted)",
+                fontWeight: intent === option ? 600 : 400,
+                transition: "border-color 0.15s ease, color 0.15s ease",
+              }}
+            >
+              <input
+                type="radio"
+                name="intent"
+                value={option}
+                checked={intent === option}
+                onChange={() => setIntent(option)}
+                className="sr-only"
+              />
+              {option === "owner" ? "Car owner" : "Provider"}
+            </label>
+          ))}
+        </fieldset>
+
+        <Input label="Name" type="text" required value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          label="Email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded border border-steel/40 bg-graphite px-3 py-2 text-ash outline-none focus:border-ignition"
         />
-      </label>
-      <label className="flex flex-col gap-1 text-sm text-steel">
-        Password
-        <input
+        <Input
+          label="Password"
           type="password"
           required
           minLength={10}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded border border-steel/40 bg-graphite px-3 py-2 text-ash outline-none focus:border-ignition"
         />
-      </label>
-      <button
-        type="submit"
-        disabled={submitting}
-        className="mt-2 rounded bg-ignition px-4 py-2 font-semibold text-void transition-colors hover:bg-ember disabled:opacity-50"
-      >
-        {submitting ? "Creating account…" : "Continue"}
-      </button>
-      <p className="text-center text-sm text-steel">
-        Already have an account?{" "}
-        <a href="/login" className="text-ignition">
-          Log in
-        </a>
-      </p>
-    </form>
+        <Button type="submit" disabled={submitting} style={{ width: "100%", marginTop: 8 }}>
+          {submitting ? "Creating account…" : "Continue"}
+        </Button>
+        <p className="text-center text-sm" style={{ color: "var(--home-text-muted)" }}>
+          Already have an account?{" "}
+          <a href="/login" style={{ color: "var(--home-accent)", fontWeight: 600 }}>
+            Log in
+          </a>
+        </p>
+      </form>
+    </Card>
   );
 }

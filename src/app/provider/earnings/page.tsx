@@ -2,6 +2,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { payments, subscriptions, providerProfiles } from "@/db/schema";
 import { getSession } from "@/lib/auth/get-session";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default async function ProviderEarningsPage() {
   const session = await getSession();
@@ -23,36 +26,36 @@ export default async function ProviderEarningsPage() {
 
   return (
     <div className="p-8">
-      <h1 className="font-display text-2xl uppercase tracking-widest text-ash">
-        Earnings &amp; payouts
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="home-serif" style={{ fontSize: 28 }}>
+          Earnings &amp; payouts
+        </h1>
+        <Button href="/api/provider/earnings/export" variant="ghost" style={{ padding: "9px 16px", fontSize: 13 }}>
+          Export CSV
+        </Button>
+      </div>
 
       <section className="mt-6">
-        <p className="mb-2 font-mono text-xs uppercase tracking-widest text-steel">
+        <p className="home-field-label" style={{ marginBottom: 8 }}>
           Subscription
         </p>
-        <p className="text-ash">
-          {subscription ? subscription.status : "No active subscription"}
-        </p>
+        <p className="text-sm">{subscription ? subscription.status : "No active subscription"}</p>
       </section>
 
       <section className="mt-6">
-        <p className="mb-2 font-mono text-xs uppercase tracking-widest text-steel">
+        <p className="home-field-label" style={{ marginBottom: 8 }}>
           Job payments
         </p>
         {providerPayments.length === 0 ? (
-          <p className="text-steel">No payments yet.</p>
+          <EmptyState>No payments yet.</EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">
             {providerPayments.map((p) => (
-              <li
-                key={p.id}
-                className="flex justify-between rounded border border-steel/40 bg-graphite p-3"
-              >
-                <span className="text-ash">
-                  {p.mode === "in_app" ? p.escrowStatus : "off-platform"}
-                </span>
-                <span className="font-mono text-ash">
+              <li key={p.id} className="home-card flex items-center justify-between" style={{ padding: 14 }}>
+                <Badge tone={p.escrowStatus === "released" ? "success" : "neutral"}>
+                  {p.mode === "in_app" ? p.escrowStatus.replace("_", " ") : "off-platform"}
+                </Badge>
+                <span style={{ fontFamily: "var(--home-font-mono)" }}>
                   {p.amountCents ? `$${(p.amountCents / 100).toFixed(2)}` : "—"}
                 </span>
               </li>
