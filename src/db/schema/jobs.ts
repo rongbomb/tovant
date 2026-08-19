@@ -9,13 +9,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { providerProfiles } from "./providers";
-import {
-  providerCategoryEnum,
-  serviceModeEnum,
-  quoteStatusEnum,
-  jobStatusEnum,
-  paymentModeEnum,
-} from "./enums";
+import { vehicles } from "./vehicles";
+import { serviceModeEnum, quoteStatusEnum, jobStatusEnum, paymentModeEnum } from "./enums";
+import { providerCategoryTypes } from "./taxonomy";
 
 // Owner -> single provider direct quote request (no open bidding).
 export const quotes = pgTable(
@@ -34,12 +30,21 @@ export const quotes = pgTable(
     providerUserId: text("provider_user_id")
       .notNull()
       .references(() => user.id),
-    category: providerCategoryEnum("category").notNull(),
+    category: text("category")
+      .notNull()
+      .references(() => providerCategoryTypes.id),
     description: text("description").notNull(),
+    // Nullable FK to a saved garage vehicle; vehicleInfo below is always
+    // populated (snapshotted at request time even when vehicleId is set)
+    // so display never depends on the vehicle still existing.
+    vehicleId: uuid("vehicle_id").references(() => vehicles.id),
     vehicleInfo: jsonb("vehicle_info"), // { year, make, model, vin? }
     serviceMode: serviceModeEnum("service_mode").notNull(),
     serviceAddress: text("service_address"),
     status: quoteStatusEnum("status").notNull().default("requested"),
+    // Set by the provider alongside quotedAmountCents — "provider's
+    // choice per job" per CLAUDE.md. Carried onto the job at acceptance.
+    paymentMode: paymentModeEnum("payment_mode"),
     quotedAmountCents: integer("quoted_amount_cents"),
     quotedAt: timestamp("quoted_at"),
     respondedAt: timestamp("responded_at"),

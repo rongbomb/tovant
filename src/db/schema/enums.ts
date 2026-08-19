@@ -2,17 +2,6 @@ import { pgEnum } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["owner", "provider", "admin"]);
 
-export const providerCategoryEnum = pgEnum("provider_category", [
-  "mechanic",
-  "detailer",
-]);
-
-export const providerSpecialtyEnum = pgEnum("provider_specialty", [
-  "ev",
-  "motorcycle_powersports",
-  "commercial_fleet",
-]);
-
 export const serviceModeEnum = pgEnum("service_mode", ["mobile", "shop", "both"]);
 
 export const verificationTypeEnum = pgEnum("verification_type", [
@@ -77,4 +66,10 @@ export const disputeStatusEnum = pgEnum("dispute_status", [
   "resolved_provider",
   "resolved_split",
   "closed",
+]);
+
+export const galleryPhotoStatusEnum = pgEnum("gallery_photo_status", [
+  "pending",
+  "approved",
+  "rejected",
 ]);

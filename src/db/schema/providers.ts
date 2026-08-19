@@ -6,17 +6,13 @@ import {
   numeric,
   integer,
   boolean,
+  date,
   unique,
   index,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import {
-  serviceModeEnum,
-  verificationStatusEnum,
-  providerCategoryEnum,
-  providerSpecialtyEnum,
-  verificationTypeEnum,
-} from "./enums";
+import { serviceModeEnum, verificationStatusEnum, verificationTypeEnum } from "./enums";
+import { providerCategoryTypes, providerSpecialtyTypes, serviceOfferingTypes } from "./taxonomy";
 
 export const providerProfiles = pgTable("provider_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -39,8 +35,17 @@ export const providerProfiles = pgTable("provider_profiles", {
     .notNull()
     .default("not_started"),
   isListable: boolean("is_listable").notNull().default(false),
+  // The provider's own pause switch — separate from isListable above,
+  // which reflects verification/subscription eligibility and is never
+  // provider-settable. A verified, listable provider can still toggle
+  // this off to stop receiving new leads without losing their listing.
+  acceptingLeads: boolean("accepting_leads").notNull().default(true),
   ratingAvg: numeric("rating_avg", { precision: 3, scale: 2 }),
   ratingCount: integer("rating_count").notNull().default(0),
+  hourlyRateCents: integer("hourly_rate_cents"),
+  // Simple running total, incremented on each public profile render —
+  // not a full analytics/events table.
+  profileViewCount: integer("profile_view_count").notNull().default(0),
   stripeConnectAccountId: text("stripe_connect_account_id"),
   stripeConnectStatus: text("stripe_connect_status"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -54,7 +59,9 @@ export const providerCategories = pgTable(
     providerId: uuid("provider_id")
       .notNull()
       .references(() => providerProfiles.id, { onDelete: "cascade" }),
-    category: providerCategoryEnum("category").notNull(),
+    category: text("category")
+      .notNull()
+      .references(() => providerCategoryTypes.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.providerId, t.category)],
@@ -69,7 +76,7 @@ export const verificationRecords = pgTable(
       .references(() => providerProfiles.id, { onDelete: "cascade" }),
     type: verificationTypeEnum("type").notNull(),
     // Set only when type = specialty_credential.
-    specialty: providerSpecialtyEnum("specialty"),
+    specialty: text("specialty").references(() => providerSpecialtyTypes.id),
     status: verificationStatusEnum("status").notNull().default("not_started"),
     externalProvider: text("external_provider"), // 'stripe_identity' | 'checkr' | 'manual'
     externalReferenceId: text("external_reference_id"), // vendor session/report id — never doc content
@@ -93,11 +100,44 @@ export const providerSpecialties = pgTable(
     providerId: uuid("provider_id")
       .notNull()
       .references(() => providerProfiles.id, { onDelete: "cascade" }),
-    specialty: providerSpecialtyEnum("specialty").notNull(),
+    specialty: text("specialty")
+      .notNull()
+      .references(() => providerSpecialtyTypes.id),
     verificationRecordId: uuid("verification_record_id").references(
       () => verificationRecords.id,
     ),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.providerId, t.specialty)],
+);
+
+export const providerServiceOfferings = pgTable(
+  "provider_service_offerings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    providerId: uuid("provider_id")
+      .notNull()
+      .references(() => providerProfiles.id, { onDelete: "cascade" }),
+    offering: text("offering")
+      .notNull()
+      .references(() => serviceOfferingTypes.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.providerId, t.offering)],
+);
+
+// A provider-declared "don't schedule me" marker for their own calendar
+// planning — informational only, not enforced against booking (there's
+// no live-availability booking engine per CLAUDE.md's scheduling model).
+export const providerUnavailableDates = pgTable(
+  "provider_unavailable_dates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    providerId: uuid("provider_id")
+      .notNull()
+      .references(() => providerProfiles.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.providerId, t.date)],
 );
