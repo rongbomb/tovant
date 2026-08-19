@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tovant Provider Dashboard</title>
+<style>
+  :root{
+    --void:#0B0C0E; --graphite:#1A1C20; --graphite-2:#212327;
+    --steel:#6E747C; --steel-dim:#3A3D43; --ash:#F2F1EE;
+    --ignition:#FF6A1A; --ember:#B8391A; --line:rgba(242,241,238,0.08);
+    --good:#37D67A;
+    --display: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:var(--void); color:var(--ash); font-family:var(--body); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+
+  .shell{ display:grid; grid-template-columns:250px 1fr; min-height:100vh; }
+  @media (max-width:900px){ .shell{ grid-template-columns:1fr; } }
+
+  .side{ background:var(--graphite); border-right:1px solid var(--line); padding:22px 16px; display:flex; flex-direction:column; }
+  @media (max-width:900px){ .side{ display:none; } }
+  .logo{ display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:800; letter-spacing:0.14em; font-size:17px; padding:8px 10px 26px; }
+  .logo .mark{ width:30px; height:30px; border-radius:7px; background:linear-gradient(135deg,var(--ignition),var(--ember)); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:14px; color:var(--void); }
+  .snav{ display:flex; flex-direction:column; gap:2px; }
+  .snav a{ display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:10px; font-size:14px; color:var(--steel); }
+  .snav a svg{ width:17px; height:17px; stroke:var(--steel); flex-shrink:0; }
+  .snav a:hover{ background:var(--graphite-2); color:var(--ash); }
+  .snav a.active{ background:rgba(255,106,26,0.1); color:var(--ignition); }
+  .snav a.active svg{ stroke:var(--ignition); }
+  .snav .lead-count{ margin-left:auto; background:var(--ignition); color:var(--void); font-family:var(--mono); font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; }
+
+  .side-foot{ margin-top:auto; padding:14px 12px; border-top:1px solid var(--line); }
+  .sub-pill{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--steel); }
+  .sub-pill .dot{ width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 8px var(--good); }
+  .sub-pill b{ color:var(--ash); }
+
+  .main{ padding:26px 34px 60px; }
+  @media (max-width:640px){ .main{ padding:20px 18px 50px; } }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:30px; gap:16px; flex-wrap:wrap; }
+  .topbar h1{ font-family:var(--display); text-transform:uppercase; font-weight:800; font-size:24px; margin:0; letter-spacing:-0.005em; }
+  .topbar .sub{ color:var(--steel); font-size:13.5px; margin-top:4px; }
+  .top-right{ display:flex; align-items:center; gap:14px; }
+  .badge-status{ display:flex; align-items:center; gap:7px; background:var(--graphite); border:1px solid var(--line); padding:8px 14px; border-radius:999px; font-size:12.5px; }
+  .badge-status .dot{ width:7px; height:7px; border-radius:50%; background:var(--good); }
+  .avatar-sm{ width:38px; height:38px; border-radius:10px; background:linear-gradient(160deg,var(--steel-dim),var(--graphite-2)); border:1px solid var(--line); }
+
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:36px; }
+  @media (max-width:900px){ .stats{ grid-template-columns:repeat(2,1fr); } }
+  .stat-card{ background:var(--graphite); border:1px solid var(--line); border-radius:16px; padding:20px; display:flex; align-items:center; gap:16px; }
+  .stat-gauge{ position:relative; width:58px; height:58px; flex-shrink:0; }
+  .stat-gauge .ring{ position:absolute; inset:0; border-radius:50%; background:conic-gradient(from -135deg, var(--ignition) 0deg, var(--ignition) var(--sweep), var(--steel-dim) var(--sweep), var(--steel-dim) 270deg, transparent 270deg); -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px)); mask:radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px)); }
+  .stat-gauge .val{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:12.5px; }
+  .stat-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--steel); margin-bottom:6px; }
+  .stat-num{ font-family:var(--mono); font-size:20px; font-weight:600; }
+  .stat-delta{ font-size:11.5px; color:var(--good); margin-top:3px; }
+
+  .grid2{ display:grid; grid-template-columns:1.4fr 1fr; gap:20px; align-items:start; }
+  @media (max-width:1080px){ .grid2{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--graphite); border:1px solid var(--line); border-radius:18px; padding:22px; margin-bottom:20px; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .panel-head h2{ font-family:var(--display); text-transform:uppercase; font-size:15px; font-weight:800; margin:0; letter-spacing:0.02em; }
+  .panel-head a{ font-size:12.5px; color:var(--ignition); }
+
+  .lead{ display:flex; gap:14px; align-items:flex-start; padding:15px 0; border-bottom:1px solid var(--line); }
+  .lead:last-child{ border-bottom:none; padding-bottom:4px; }
+  .lead .av{ width:40px; height:40px; border-radius:10px; background:var(--steel-dim); flex-shrink:0; }
+  .lead-name{ font-weight:700; font-size:14px; }
+  .lead-time{ font-family:var(--mono); font-size:11px; color:var(--steel); }
+  .lead-desc{ font-size:13.5px; color:var(--steel); margin-top:5px; line-height:1.5; }
+  .lead-actions{ display:flex; gap:8px; margin-top:12px; }
+  .btn-mini{ font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:999px; }
+  .btn-mini.primary{ background:var(--ignition); color:var(--void); border:none; }
+  .btn-mini.ghost{ background:none; border:1px solid var(--line); color:var(--ash); }
+  .new-flag{ background:rgba(255,106,26,0.14); color:var(--ignition); font-family:var(--mono); font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 7px; border-radius:5px; margin-left:8px; }
+
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-day-label{ font-family:var(--mono); font-size:10px; color:var(--steel); text-align:center; padding-bottom:6px; }
+  .cal-cell{ aspect-ratio:1/1; border-radius:8px; background:var(--graphite-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:12px; color:var(--steel); border:1px solid transparent; }
+  .cal-cell.today{ border-color:var(--ignition); color:var(--ignition); font-weight:700; }
+  .cal-cell.booked{ background:rgba(255,106,26,0.16); color:var(--ash); position:relative; }
+  .cal-cell.booked:after{ content:""; position:absolute; bottom:5px; width:4px; height:4px; border-radius:50%; background:var(--ignition); }
+
+  table{ width:100%; border-collapse:collapse; }
+  th{ text-align:left; font-family:var(--mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--steel); font-weight:500; padding-bottom:10px; border-bottom:1px solid var(--line); }
+  td{ padding:12px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  tr:last-child td{ border-bottom:none; }
+  td.amt{ font-family:var(--mono); text-align:right; }
+  .pill-status{ font-family:var(--mono); font-size:10.5px; text-transform:uppercase; padding:3px 9px; border-radius:999px; }
+  .pill-status.released{ background:rgba(55,214,122,0.14); color:var(--good); }
+  .pill-status.held{ background:rgba(255,106,26,0.14); color:var(--ignition); }
+
+  .payout-box{ display:flex; align-items:center; justify-content:space-between; background:var(--graphite-2); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-top:6px; }
+  .payout-box .l{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--steel); }
+  .payout-box .n{ font-family:var(--mono); font-size:22px; font-weight:600; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="side">
+    <div class="logo"><span class="mark">T</span>TOVANT</div>
+    <nav class="snav">
+      <a href="#" class="active"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v5"/></svg>Leads<span class="lead-count">3</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 12l2 2 4-4M12 3l7 4v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9V7l7-4z"/></svg>Jobs</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2v20M17 5.5c-1.2-1-3-1.5-5-1.5-3.3 0-6 1.6-6 4s2.7 4 6 4 6 1.6 6 4-2.7 4-6 4c-2 0-3.8-.5-5-1.5"/></svg>Earnings</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-4 5-6 7-6s5.5 2 7 6"/></svg>Profile</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 5h16v11H8l-4 4V5z"/></svg>Messages</a>
+    </nav>
+    <div class="side-foot">
+      <div class="sub-pill"><span class="dot"></span>Subscription <b>Active</b> &middot; renews Sep&nbsp;12</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1>Good morning, Marcus</h1>
+        <div class="sub">Here's what's happening across your leads and jobs.</div>
+      </div>
+      <div class="top-right">
+        <div class="badge-status"><span class="dot"></span>Profile live &middot; visible in search</div>
+        <div class="avatar-sm"></div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-gauge"><div class="ring" style="--sweep:259deg"></div><div class="val">4.8</div></div>
+        <div><div class="stat-label">Rating</div><div class="stat-num">4.8</div><div class="stat-delta">118 reviews</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-gauge"><div class="ring" style="--sweep:230deg"></div><div class="val">85%</div></div>
+        <div><div class="stat-label">Quote win rate</div><div class="stat-num">85%</div><div class="stat-delta">+4% this month</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-gauge"><div class="ring" style="--sweep:200deg"></div><div class="val">38m</div></div>
+        <div><div class="stat-label">Avg. response</div><div class="stat-num">38 min</div><div class="stat-delta">Faster than 80%</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-gauge"><div class="ring" style="--sweep:270deg"></div><div class="val">$4.2k</div></div>
+        <div><div class="stat-label">This month</div><div class="stat-num">$4,180</div><div class="stat-delta">14 jobs completed</div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h2>Incoming leads</h2><a href="#">View all</a></div>
+
+          <div class="lead">
+            <div class="av"></div>
+            <div style="flex:1">
+              <div class="lead-name">Danielle W. <span class="new-flag">New</span></div>
+              <div class="lead-time">2021 Toyota RAV4 &middot; requested 8 min ago</div>
+              <div class="lead-desc">"Grinding noise when braking, started about a week ago. Worse when turning right."</div>
+              <div class="lead-actions">
+                <a href="#" class="btn-mini primary">Send quote</a>
+                <a href="#" class="btn-mini ghost">Message</a>
+                <a href="#" class="btn-mini ghost">Decline</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="lead">
+            <div class="av"></div>
+            <div style="flex:1">
+              <div class="lead-name">Ops Fleet &ndash; Cedar Ave</div>
+              <div class="lead-time">2019 Ford Transit &middot; requested 1 hr ago</div>
+              <div class="lead-desc">"Check engine light on, van is due for a 60k mile service too if you can bundle."</div>
+              <div class="lead-actions">
+                <a href="#" class="btn-mini primary">Send quote</a>
+                <a href="#" class="btn-mini ghost">Message</a>
+                <a href="#" class="btn-mini ghost">Decline</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="lead">
+            <div class="av"></div>
+            <div style="flex:1">
+              <div class="lead-name">Tom R.</div>
+              <div class="lead-time">2019 Ford F-150 &middot; requested yesterday</div>
+              <div class="lead-desc">"Following up on the quote &mdash; can you still do Thursday afternoon?"</div>
+              <div class="lead-actions">
+                <a href="#" class="btn-mini primary">Reply</a>
+                <a href="#" class="btn-mini ghost">View quote</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Earnings</h2><a href="#">Full history</a></div>
+          <table>
+            <thead><tr><th>Job</th><th>Vehicle</th><th>Status</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody>
+              <tr><td>Brake inspection &amp; pad replace</td><td>Danielle W.</td><td><span class="pill-status held">Escrow held</span></td><td class="amt">$212.00</td></tr>
+              <tr><td>60k mile service</td><td>Ops Fleet</td><td><span class="pill-status released">Released</span></td><td class="amt">$385.00</td></tr>
+              <tr><td>Diagnostic &amp; sensor swap</td><td>Priya C.</td><td><span class="pill-status released">Released</span></td><td class="amt">$140.00</td></tr>
+              <tr><td>Battery cooling repair</td><td>Danielle W.</td><td><span class="pill-status released">Released</span></td><td class="amt">$460.00</td></tr>
+            </tbody>
+          </table>
+          <div class="payout-box">
+            <div><div class="l">Next payout</div><div class="n">$925.00</div></div>
+            <div class="btn-mini ghost" style="border-color:var(--line)">Sep 16 &middot; Chase &middot;&middot;4821</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h2>This week</h2><a href="#">Open calendar</a></div>
+          <div class="cal-grid">
+            <div class="cal-day-label">S</div><div class="cal-day-label">M</div><div class="cal-day-label">T</div><div class="cal-day-label">W</div><div class="cal-day-label">T</div><div class="cal-day-label">F</div><div class="cal-day-label">S</div>
+            <div class="cal-cell">9</div><div class="cal-cell booked">10</div><div class="cal-cell today">11</div><div class="cal-cell booked">12</div><div class="cal-cell">13</div><div class="cal-cell booked">14</div><div class="cal-cell">15</div>
+          </div>
+          <div style="margin-top:16px; display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px;"><span style="color:var(--steel)">Thu, 2:00 PM</span><span>Ops Fleet &ndash; 60k service</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px;"><span style="color:var(--steel)">Fri, 10:30 AM</span><span>Tom R. &ndash; brake follow-up</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Verification status</h2></div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13.5px;"><span>Identity</span><span style="color:var(--good); font-family:var(--mono); font-size:11px;">VERIFIED</span></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13.5px;"><span>License &amp; insurance</span><span style="color:var(--good); font-family:var(--mono); font-size:11px;">VERIFIED</span></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13.5px;"><span>Background check</span><span style="color:var(--good); font-family:var(--mono); font-size:11px;">VERIFIED</span></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13.5px;"><span>EV specialty cert</span><span style="color:var(--ignition); font-family:var(--mono); font-size:11px;">EXPIRES NOV</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>
