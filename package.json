@@ -14,18 +14,21 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed:demo": "npx tsx --env-file=.env scripts/seed-demo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1110.0",
     "@aws-sdk/s3-request-presigner": "^3.1110.0",
     "better-auth": "^1.6.28",
     "drizzle-orm": "^0.45.2",
+    "leaflet": "^1.9.4",
     "next": "16.3.1",
     "pg": "^8.23.0",
     "postmark": "^5.1.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-leaflet": "^5.0.0",
     "server-only": "^0.0.1",
     "stripe": "^22.5.0",
     "twilio": "^6.1.0"
@@ -33,6 +36,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/pg": "^8.21.0",
     "@types/react": "^19",
@@ -41,7 +45,6 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
-    "otpauth": "^9.5.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",

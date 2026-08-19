@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
+import { admin } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { twoFactor } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 
@@ -32,16 +32,20 @@ export const auth = betterAuth({
       },
     },
   },
-  plugins: [twoFactor({ issuer: "Tovant" })],
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 1 day
-    cookieCache: {
-      enabled: true,
-      maxAge: 60 * 5,
-    },
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
   trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"],
+  plugins: [
+    admin({
+      // The plugin's create-user hook defaults role to "user" if this isn't
+      // set explicitly — "user" isn't a role dashboardPathForRole/requireRole
+      // understand, so every signup would redirect-loop without this.
+      defaultRole: "owner",
+      adminRoles: ["admin"],
+    }),
+  ],
 });

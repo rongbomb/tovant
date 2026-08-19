@@ -17,6 +17,9 @@ test-results/
 # local stub object storage (see src/lib/integrations/storage)
 .local-storage/
 
+# admin-uploaded homepage images (committed defaults live in public/images/homepage)
+public/uploads/
+
 # misc
 .DS_Store
 *.pem

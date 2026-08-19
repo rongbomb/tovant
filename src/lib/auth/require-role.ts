@@ -6,8 +6,8 @@ import { dashboardPathForRole, type UserRole } from "./role-redirect";
 /**
  * Authoritative access check for a role-gated route group layout.
  * middleware.ts only checks cookie presence (edge-safe, no DB hit); this
- * is the real check — session validity, mandatory 2FA, and role match —
- * and runs on the Node runtime since it needs Drizzle/pg.
+ * is the real check — session validity and role match — and runs on the
+ * Node runtime since it needs Drizzle/pg.
  */
 export async function requireRole(expectedRole: UserRole) {
   const session = await getSession();
@@ -16,14 +16,7 @@ export async function requireRole(expectedRole: UserRole) {
     redirect("/login");
   }
 
-  const user = session.user as typeof session.user & {
-    role?: string;
-    twoFactorEnabled?: boolean | null;
-  };
-
-  if (!user.twoFactorEnabled) {
-    redirect("/verify-2fa/setup");
-  }
+  const user = session.user as typeof session.user & { role?: string };
 
   if (user.role !== expectedRole) {
     // No admin impersonation of owner/provider views in v1 — send them to

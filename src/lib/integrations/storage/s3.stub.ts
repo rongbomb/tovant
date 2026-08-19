@@ -20,7 +20,10 @@ export const storageStub: ObjectStorageProvider = {
   },
   async getSignedReadUrl(key, expiresInSeconds = 900) {
     console.log(`[stub:storage] getSignedReadUrl ${key} (expires ${expiresInSeconds}s)`);
-    return `http://localhost:3000/.local-storage/${encodeURIComponent(key)}`;
+    // Relative, and each path segment encoded individually (not the whole
+    // key) so "/" stays a path separator for the [...key] route below.
+    const encodedPath = key.split("/").map(encodeURIComponent).join("/");
+    return `/api/local-storage/${encodedPath}`;
   },
   async deleteObject(key) {
     try {
