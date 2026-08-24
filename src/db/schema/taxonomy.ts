@@ -33,6 +33,14 @@ export const providerSpecialtyTypes = pgTable("provider_specialty_types", {
 export const serviceOfferingTypes = pgTable("service_offering_types", {
   id: text("id").primaryKey(),
   label: text("label").notNull(),
+  // Which category this offering belongs to (e.g. "brakes" -> mechanic,
+  // "exterior_detailing" -> detailer). Without this every offering was one
+  // flat list shared by every provider regardless of category, which stops
+  // being usable once more than one or two categories are active — a
+  // mechanic and a detailer would see each other's checkboxes.
+  categoryId: text("category_id")
+    .notNull()
+    .references(() => providerCategoryTypes.id),
   sortOrder: integer("sort_order").notNull().default(0),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),

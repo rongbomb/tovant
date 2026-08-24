@@ -1,9 +1,16 @@
 import { eq } from "drizzle-orm";
 import Image from "next/image";
 import { db } from "@/db";
-import { profiles, providerProfiles, providerServiceOfferings, providerGalleryPhotos } from "@/db/schema";
+import {
+  profiles,
+  providerProfiles,
+  providerCategories,
+  providerServiceOfferings,
+  providerGalleryPhotos,
+} from "@/db/schema";
 import { getSession } from "@/lib/auth/get-session";
-import { getActiveServiceOfferings } from "@/lib/service-offerings";
+import { getActiveServiceOfferingsForCategories } from "@/lib/service-offerings";
+import { getCategoryLabelMap } from "@/lib/taxonomy-labels";
 import { ProfileSettingsSection } from "@/components/settings/profile-settings-section";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/field";
@@ -26,14 +33,13 @@ const STATUS_TONE: Record<string, "neutral" | "success" | "danger"> = {
 
 export default async function ProviderSettingsPage() {
   const session = await getSession();
-  const activeOfferings = await getActiveServiceOfferings();
   const provider = session
     ? await db.query.providerProfiles.findFirst({
         where: eq(providerProfiles.userId, session.user.id),
       })
     : null;
 
-  const [offerings, galleryPhotos, profile] = provider
+  const [offerings, galleryPhotos, profile, categories] = provider
     ? await Promise.all([
         db
           .select()
@@ -47,8 +53,18 @@ export default async function ProviderSettingsPage() {
         session
           ? db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) })
           : undefined,
+        db
+          .select()
+          .from(providerCategories)
+          .where(eq(providerCategories.providerId, provider.id)),
       ])
-    : [[], [], undefined];
+    : [[], [], undefined, []];
+
+  const categoryIds = categories.map((c) => c.category);
+  const [activeOfferings, categoryLabels] = await Promise.all([
+    getActiveServiceOfferingsForCategories(categoryIds),
+    getCategoryLabelMap(),
+  ]);
 
   const selectedOfferings = new Set(offerings.map((o) => o.offering));
 
@@ -82,18 +98,33 @@ export default async function ProviderSettingsPage() {
         </div>
         <Card>
           <form action={updateServiceOfferings} className="flex flex-col gap-4">
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {activeOfferings.map((o) => (
-                <label
-                  key={o.value}
-                  className="flex items-center gap-2 text-sm"
-                  style={{ border: "1px solid var(--home-line)", borderRadius: 10, padding: "8px 12px" }}
-                >
-                  <input type="checkbox" name="offering" value={o.value} defaultChecked={selectedOfferings.has(o.value)} />
-                  {o.label}
-                </label>
-              ))}
-            </div>
+            {categoryIds.length === 0 ? (
+              <EmptyState>Add a category at /become-a-provider before selecting services.</EmptyState>
+            ) : (
+              categoryIds.map((categoryId) => {
+                const offeringsForCategory = activeOfferings.filter((o) => o.categoryId === categoryId);
+                if (offeringsForCategory.length === 0) return null;
+                return (
+                  <div key={categoryId} className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--home-text-muted)" }}>
+                      {categoryLabels[categoryId] ?? categoryId}
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {offeringsForCategory.map((o) => (
+                        <label
+                          key={o.value}
+                          className="flex items-center gap-2 text-sm"
+                          style={{ border: "1px solid var(--home-line)", borderRadius: 10, padding: "8px 12px" }}
+                        >
+                          <input type="checkbox" name="offering" value={o.value} defaultChecked={selectedOfferings.has(o.value)} />
+                          {o.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
             <div className="sm:max-w-xs">
               <Input
                 label="Typical hourly rate (optional)"

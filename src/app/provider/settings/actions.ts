@@ -6,9 +6,9 @@ import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extname } from "path";
 import { db } from "@/db";
-import { providerProfiles, providerServiceOfferings, providerGalleryPhotos } from "@/db/schema";
+import { providerProfiles, providerCategories, providerServiceOfferings, providerGalleryPhotos } from "@/db/schema";
 import { requireRole } from "@/lib/auth/require-role";
-import { getActiveServiceOfferings } from "@/lib/service-offerings";
+import { getActiveServiceOfferingsForCategories } from "@/lib/service-offerings";
 import { storageProvider } from "@/lib/integrations/registry";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -22,7 +22,11 @@ export async function updateServiceOfferings(formData: FormData) {
   });
   if (!provider) throw new Error("Provider profile not found.");
 
-  const activeOfferings = await getActiveServiceOfferings();
+  const categories = await db
+    .select()
+    .from(providerCategories)
+    .where(eq(providerCategories.providerId, provider.id));
+  const activeOfferings = await getActiveServiceOfferingsForCategories(categories.map((c) => c.category));
   const activeValues = new Set(activeOfferings.map((o) => o.value));
   const selected = formData
     .getAll("offering")

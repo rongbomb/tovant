@@ -1,10 +1,10 @@
 import "server-only";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceOfferingTypes } from "@/db/schema";
 
 export type ServiceOffering = string;
-export type ServiceOfferingOption = { value: string; label: string };
+export type ServiceOfferingOption = { value: string; label: string; categoryId: string };
 
 /** Active offerings only, for selection UI (checkboxes, etc). */
 export async function getActiveServiceOfferings(): Promise<ServiceOfferingOption[]> {
@@ -13,7 +13,25 @@ export async function getActiveServiceOfferings(): Promise<ServiceOfferingOption
     .from(serviceOfferingTypes)
     .where(eq(serviceOfferingTypes.active, true))
     .orderBy(asc(serviceOfferingTypes.sortOrder));
-  return rows.map((r) => ({ value: r.id, label: r.label }));
+  return rows.map((r) => ({ value: r.id, label: r.label, categoryId: r.categoryId }));
+}
+
+/**
+ * Active offerings scoped to a specific set of category ids — what a
+ * provider's own "Services" picker should show, since a provider selling
+ * mechanic work shouldn't see detailing/tint offerings mixed into the same
+ * checkbox grid, and vice versa.
+ */
+export async function getActiveServiceOfferingsForCategories(
+  categoryIds: string[],
+): Promise<ServiceOfferingOption[]> {
+  if (categoryIds.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(serviceOfferingTypes)
+    .where(and(eq(serviceOfferingTypes.active, true), inArray(serviceOfferingTypes.categoryId, categoryIds)))
+    .orderBy(asc(serviceOfferingTypes.sortOrder));
+  return rows.map((r) => ({ value: r.id, label: r.label, categoryId: r.categoryId }));
 }
 
 /**

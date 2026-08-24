@@ -28,6 +28,8 @@ export function SearchCard({ categories }: { categories: { id: string; label: st
   const [selected, setSelected] = useState<Date | null>(null);
   const [triggerLabel, setTriggerLabel] = useState("This week");
   const fieldRef = useRef<HTMLDivElement>(null);
+  const serviceRef = useRef<HTMLSelectElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -77,7 +79,7 @@ export function SearchCard({ categories }: { categories: { id: string; label: st
       <div className="home-search-card">
         <div className="home-search-field">
           <label htmlFor="home-svc">Service</label>
-          <select id="home-svc" defaultValue={categories[0]?.id}>
+          <select id="home-svc" ref={serviceRef} defaultValue={categories[0]?.id}>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
@@ -85,7 +87,7 @@ export function SearchCard({ categories }: { categories: { id: string; label: st
         </div>
         <div className="home-search-field">
           <label htmlFor="home-loc">Location</label>
-          <input id="home-loc" type="text" placeholder="ZIP or neighborhood" />
+          <input id="home-loc" ref={locationRef} type="text" placeholder="ZIP or neighborhood" />
         </div>
         <div className="home-search-field" ref={fieldRef}>
           <label htmlFor="home-date-trigger">When</label>
@@ -147,7 +149,15 @@ export function SearchCard({ categories }: { categories: { id: string; label: st
         <button
           className="home-btn home-btn-primary"
           type="button"
-          onClick={() => router.push("/discover")}
+          onClick={() => {
+            const params = new URLSearchParams();
+            const service = serviceRef.current?.value;
+            const location = locationRef.current?.value.trim();
+            if (service) params.set("category", service);
+            if (location) params.set("near", location);
+            const query = params.toString();
+            router.push(query ? `/discover?${query}` : "/discover");
+          }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2.2" />

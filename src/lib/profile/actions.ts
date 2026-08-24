@@ -9,6 +9,7 @@ import { db } from "@/db";
 import { profiles, user } from "@/db/schema";
 import { getSession } from "@/lib/auth/get-session";
 import { storageProvider } from "@/lib/integrations/registry";
+import { geocodeAddress } from "@/lib/geocoding";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -24,6 +25,15 @@ export async function updateProfile(formData: FormData) {
   const postalCode = String(formData.get("postalCode") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
 
+  // Only providers' addresses feed public search/map placement, so only
+  // providers' addresses get sent to the geocoder — an owner's home address
+  // has no current use for coordinates and shouldn't leave the app by
+  // default. Best-effort: a failed lookup leaves any existing coordinates
+  // alone rather than blanking out a previously-good pin.
+  const role = (session.user as { role?: string }).role;
+  const fullAddress = [addressLine1, city, state, postalCode].filter(Boolean).join(", ");
+  const geocoded = role === "provider" && fullAddress ? await geocodeAddress(fullAddress) : null;
+
   await db
     .insert(profiles)
     .values({
@@ -33,6 +43,7 @@ export async function updateProfile(formData: FormData) {
       city: city || null,
       state: state || null,
       postalCode: postalCode || null,
+      ...(geocoded ? { lat: String(geocoded.lat), lng: String(geocoded.lng) } : {}),
     })
     .onConflictDoUpdate({
       target: profiles.userId,
@@ -43,6 +54,7 @@ export async function updateProfile(formData: FormData) {
         state: state || null,
         postalCode: postalCode || null,
         updatedAt: new Date(),
+        ...(geocoded ? { lat: String(geocoded.lat), lng: String(geocoded.lng) } : {}),
       },
     });
 
