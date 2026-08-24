@@ -31,3 +31,8 @@ pnpm-debug.log*
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# local agent skills (installed via `npx skills add`, machine-local)
+.agents/
+.claude/
+skills-lock.json
