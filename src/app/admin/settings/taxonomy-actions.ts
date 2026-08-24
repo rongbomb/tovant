@@ -36,11 +36,21 @@ export async function addTaxonomyEntry(formData: FormData) {
   if (!(kind in TAXONOMY_TABLES)) throw new Error("Unknown taxonomy kind.");
   if (!label) throw new Error("Label is required.");
 
-  const table = TAXONOMY_TABLES[kind];
   const id = slugify(label);
   if (!id) throw new Error("Label must contain at least one letter or number.");
 
-  await db.insert(table).values({ id, label });
+  if (kind === "offering") {
+    const categoryId = String(formData.get("categoryId") ?? "");
+    if (!categoryId) throw new Error("Choose which category this service offering belongs to.");
+    const category = await db.query.providerCategoryTypes.findFirst({
+      where: eq(providerCategoryTypes.id, categoryId),
+    });
+    if (!category) throw new Error("Unknown category.");
+    await db.insert(serviceOfferingTypes).values({ id, label, categoryId });
+  } else {
+    const table = TAXONOMY_TABLES[kind];
+    await db.insert(table).values({ id, label });
+  }
 
   revalidatePath("/admin/settings");
 }
@@ -81,7 +91,13 @@ export async function updateSiteSetting(formData: FormData) {
   const valueRaw = formData.get("value");
   const value = Number(valueRaw);
 
-  if (!["escrow_auto_release_hours", "default_cancellation_window_hours"].includes(key)) {
+  const KNOWN_KEYS = [
+    "escrow_auto_release_hours",
+    "default_cancellation_window_hours",
+    "per_lead_fee_cents",
+    "late_cancellation_fee_percent",
+  ];
+  if (!KNOWN_KEYS.includes(key)) {
     throw new Error("Unknown setting.");
   }
   if (!Number.isFinite(value) || value <= 0) {

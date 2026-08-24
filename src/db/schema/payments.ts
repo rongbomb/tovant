@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { providerProfiles } from "./providers";
-import { jobs } from "./jobs";
+import { jobs, quotes } from "./jobs";
 import { paymentModeEnum, escrowStatusEnum, subscriptionStatusEnum } from "./enums";
 
 export const payments = pgTable(
@@ -51,6 +51,33 @@ export const payments = pgTable(
     index("payments_provider_user_id_idx").on(t.providerUserId),
     index("payments_auto_release_at_idx").on(t.autoReleaseAt),
   ],
+);
+
+// Per-lead charging (CLAUDE.md monetization: a provider is charged as soon
+// as an owner sends them a quote request, regardless of response). One row
+// per quote — a provider is charged at most once per lead.
+export const leadCharges = pgTable(
+  "lead_charges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id)
+      .unique(),
+    providerId: uuid("provider_id")
+      .notNull()
+      .references(() => providerProfiles.id),
+    providerUserId: text("provider_user_id")
+      .notNull()
+      .references(() => user.id),
+    amountCents: integer("amount_cents").notNull(),
+    // Stub billing always succeeds; kept as a real status column (not just
+    // an assumption) since live billing can fail (declined card, etc.).
+    status: text("status").notNull().default("charged"), // 'charged' | 'failed'
+    stripeChargeId: text("stripe_charge_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("lead_charges_provider_id_idx").on(t.providerId)],
 );
 
 export const subscriptions = pgTable("subscriptions", {

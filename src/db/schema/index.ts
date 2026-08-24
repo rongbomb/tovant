@@ -12,3 +12,4 @@ export * from "./gallery";
 export * from "./audit-log";
 export * from "./site-content";
 export * from "./taxonomy";
+export * from "./notifications";

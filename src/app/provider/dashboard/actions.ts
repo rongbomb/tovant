@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { quotes, providerProfiles } from "@/db/schema";
 import { requireRole } from "@/lib/auth/require-role";
+import { notifyUser } from "@/lib/notifications/notify";
 
 async function loadOwnedQuote(quoteId: string, providerUserId: string) {
   const quote = await db.query.quotes.findFirst({ where: eq(quotes.id, quoteId) });
@@ -31,9 +32,6 @@ export async function sendQuote(formData: FormData) {
     throw new Error("This lead has already been responded to.");
   }
 
-  // No charge fires here — the per-lead/per-completion monetization
-  // model is still being decided (see CLAUDE.md). Real functionality
-  // without payment wiring, per the product owner's answer.
   await db
     .update(quotes)
     .set({
@@ -44,6 +42,14 @@ export async function sendQuote(formData: FormData) {
       updatedAt: new Date(),
     })
     .where(eq(quotes.id, quoteId));
+
+  await notifyUser({
+    userId: quote.ownerId,
+    type: "quote.responded",
+    title: "You got a quote",
+    body: `$${amountDollars.toFixed(2)} — review it and schedule the job.`,
+    link: "/owner/jobs",
+  });
 
   revalidatePath("/provider/dashboard");
 }
@@ -61,6 +67,14 @@ export async function declineQuote(formData: FormData) {
     .update(quotes)
     .set({ status: "declined", respondedAt: new Date(), updatedAt: new Date() })
     .where(eq(quotes.id, quoteId));
+
+  await notifyUser({
+    userId: quote.ownerId,
+    type: "quote.responded",
+    title: "Quote request declined",
+    body: "This pro can't take on your request. Try another verified pro nearby.",
+    link: "/discover",
+  });
 
   revalidatePath("/provider/dashboard");
 }

@@ -1,16 +1,20 @@
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { jobs, providerProfiles, reviews } from "@/db/schema";
+import { jobs, providerProfiles, reviews, payments, disputes } from "@/db/schema";
 import { getSession } from "@/lib/auth/get-session";
 import { requireOwnership, type SessionUser } from "@/lib/security/ownership";
 import { RatingInput } from "@/components/ui/rating-input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { saveReview } from "./actions";
+import { Badge } from "@/components/ui/badge";
+import { saveReview, releaseEscrowNow, openDispute, cancelJob } from "./actions";
 
 const REVIEWABLE_STATUSES = new Set(["completed", "disputed"]);
+const CANCELLABLE_STATUSES = new Set(["scheduled", "confirmed"]);
+const DISPUTABLE_STATUSES = new Set(["scheduled", "confirmed", "in_progress", "completed"]);
+const OPEN_DISPUTE_STATUSES = ["open", "under_review"] as const;
 
 export default async function OwnerJobDetailPage({
   params,
@@ -25,12 +29,23 @@ export default async function OwnerJobDetailPage({
   if (!job) notFound();
   await requireOwnership(job, session.user as SessionUser);
 
-  const [provider, existingReview] = await Promise.all([
+  const [provider, existingReview, payment, openDisputeRow] = await Promise.all([
     db.query.providerProfiles.findFirst({ where: eq(providerProfiles.id, job.providerId) }),
     db.query.reviews.findFirst({ where: eq(reviews.jobId, job.id) }),
+    db.query.payments.findFirst({ where: eq(payments.jobId, job.id) }),
+    db.query.disputes.findFirst({
+      where: and(eq(disputes.jobId, job.id), inArray(disputes.status, [...OPEN_DISPUTE_STATUSES])),
+    }),
   ]);
 
+  const now = new Date();
   const canReview = REVIEWABLE_STATUSES.has(job.status) && job.ownerId === session.user.id;
+  const canCancel = CANCELLABLE_STATUSES.has(job.status);
+  const canDispute = DISPUTABLE_STATUSES.has(job.status) && !openDisputeRow;
+  const canRelease =
+    payment?.mode === "in_app" && payment.escrowStatus === "captured" && !openDisputeRow;
+  const isLateToCancel =
+    canCancel && (job.scheduledAt.getTime() - now.getTime()) / (60 * 60 * 1000) < job.cancellationWindowHours;
 
   return (
     <div className="flex flex-col gap-8 p-8">
@@ -44,10 +59,87 @@ export default async function OwnerJobDetailPage({
         >
           {job.status.replace("_", " ")} · Scheduled {new Date(job.scheduledAt).toLocaleDateString()}
         </p>
-        <Button href={`/owner/messages?jobId=${job.id}`} variant="ghost" style={{ marginTop: 12 }}>
-          Message provider
-        </Button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button href={`/owner/messages?jobId=${job.id}`} variant="ghost">
+            Message provider
+          </Button>
+          {canCancel ? (
+            <form action={cancelJob}>
+              <input type="hidden" name="jobId" value={job.id} />
+              <Button type="submit" variant="ghost">
+                {isLateToCancel ? "Cancel (late fee applies)" : "Cancel job"}
+              </Button>
+            </form>
+          ) : null}
+        </div>
       </div>
+
+      {openDisputeRow ? (
+        <Card className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <p className="home-serif" style={{ fontSize: 16 }}>Dispute open</p>
+            <Badge tone="warning">{openDisputeRow.status.replace("_", " ")}</Badge>
+          </div>
+          <p className="text-sm" style={{ color: "var(--home-text-muted)" }}>
+            An admin is reviewing this dispute. Payment is on hold until it&apos;s resolved.
+          </p>
+        </Card>
+      ) : null}
+
+      {payment?.mode === "in_app" ? (
+        <Card className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="home-serif" style={{ fontSize: 16 }}>Payment</p>
+            <Badge
+              tone={
+                payment.escrowStatus === "released"
+                  ? "success"
+                  : payment.escrowStatus === "refunded"
+                    ? "neutral"
+                    : "warning"
+              }
+            >
+              {payment.escrowStatus.replace("_", " ")}
+            </Badge>
+          </div>
+          {payment.amountCents ? (
+            <p style={{ fontFamily: "var(--home-font-mono)", fontSize: 20, fontWeight: 600 }}>
+              ${(payment.amountCents / 100).toFixed(2)}
+            </p>
+          ) : null}
+          {canRelease ? (
+            <>
+              <p className="text-sm" style={{ color: "var(--home-text-muted)" }}>
+                Your provider marked this job complete. Release payment now, or it releases
+                automatically if you don&apos;t act.
+              </p>
+              <form action={releaseEscrowNow}>
+                <input type="hidden" name="jobId" value={job.id} />
+                <Button type="submit" style={{ alignSelf: "flex-start" }}>
+                  Release payment now
+                </Button>
+              </form>
+            </>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {canDispute ? (
+        <Card>
+          <details>
+            <summary className="text-sm" style={{ cursor: "pointer", color: "var(--home-accent)" }}>
+              Something wrong with this job? Open a dispute
+            </summary>
+            <form action={openDispute} className="mt-3 flex flex-col gap-3">
+              <input type="hidden" name="jobId" value={job.id} />
+              <Textarea name="reason" required placeholder="What went wrong?" />
+              <Button type="submit" variant="ghost" style={{ alignSelf: "flex-start" }}>
+                Open dispute
+              </Button>
+            </form>
+          </details>
+        </Card>
+      ) : null}
 
       {canReview ? (
         <Card className="flex flex-col gap-4">

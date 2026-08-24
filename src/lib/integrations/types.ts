@@ -20,11 +20,31 @@ export interface ConnectPayoutsProvider {
     jobId: string;
     amountCents: number;
   }): Promise<{ paymentIntentId: string }>;
-  capturePayment(paymentIntentId: string): Promise<void>;
+  // amountCents omitted = full authorized amount (Stripe's own default for
+  // capture/refund). Passing less is how a late-cancellation fee or a
+  // split dispute resolution moves only part of the held funds.
+  capturePayment(paymentIntentId: string, amountCents?: number): Promise<void>;
   releaseToProvider(
     paymentIntentId: string,
+    amountCents?: number,
   ): Promise<{ transferId: string }>;
-  refund(paymentIntentId: string): Promise<void>;
+  refund(paymentIntentId: string, amountCents?: number): Promise<void>;
+}
+
+/**
+ * Per-lead charging (CLAUDE.md monetization) — a provider is charged as
+ * soon as an owner sends a quote request, independent of the escrow/payout
+ * flow above (that's owner money held for a job; this is the provider
+ * paying Tovant for the lead itself).
+ */
+export interface LeadBillingProvider {
+  chargeLead(input: {
+    providerId: string;
+    quoteId: string;
+    amountCents: number;
+    /** The provider's Stripe Customer id (providerProfiles.stripeCustomerId) — required in live mode, has nothing to charge without one on file. */
+    stripeCustomerId: string | null;
+  }): Promise<{ chargeId: string; status: "charged" | "failed" }>;
 }
 
 export interface IdentityVerificationProvider {

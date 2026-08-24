@@ -4,10 +4,11 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { verificationRecords } from "@/db/schema";
+import { verificationRecords, providerProfiles } from "@/db/schema";
 import { requireRole } from "@/lib/auth/require-role";
 import { writeAuditLog } from "@/lib/security/audit-log";
 import { recomputeProviderListability } from "@/lib/providers/verification";
+import { notifyUser } from "@/lib/notifications/notify";
 
 export async function approveVerificationRecord(formData: FormData) {
   const session = await requireRole("admin");
@@ -43,6 +44,22 @@ export async function approveVerificationRecord(formData: FormData) {
     );
 
     await recomputeProviderListability(tx, record.providerId);
+
+    const provider = await tx.query.providerProfiles.findFirst({
+      where: eq(providerProfiles.id, record.providerId),
+    });
+    if (provider) {
+      await notifyUser(
+        {
+          userId: provider.userId,
+          type: "verification.decided",
+          title: "Verification approved",
+          body: `Your ${record.type.replace("_", " ")} was approved.`,
+          link: "/provider/onboarding",
+        },
+        tx,
+      );
+    }
   });
 
   revalidatePath("/admin/providers");
@@ -84,6 +101,22 @@ export async function rejectVerificationRecord(formData: FormData) {
     );
 
     await recomputeProviderListability(tx, record.providerId);
+
+    const provider = await tx.query.providerProfiles.findFirst({
+      where: eq(providerProfiles.id, record.providerId),
+    });
+    if (provider) {
+      await notifyUser(
+        {
+          userId: provider.userId,
+          type: "verification.decided",
+          title: "Verification needs attention",
+          body: `Your ${record.type.replace("_", " ")} was rejected: ${reason || "see onboarding for details"}.`,
+          link: "/provider/onboarding",
+        },
+        tx,
+      );
+    }
   });
 
   revalidatePath("/admin/providers");

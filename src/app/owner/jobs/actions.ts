@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { quotes, jobs, payments } from "@/db/schema";
 import { requireRole } from "@/lib/auth/require-role";
 import { getSiteSettingHours } from "@/lib/site-settings";
+import { connectProvider } from "@/lib/integrations/registry";
 
 export async function acceptQuote(formData: FormData) {
   const session = await requireRole("owner");
@@ -29,7 +30,7 @@ export async function acceptQuote(formData: FormData) {
   const paymentMode = quote.paymentMode ?? "off_platform";
   const cancellationWindowHours = await getSiteSettingHours("default_cancellation_window_hours");
 
-  await db.transaction(async (tx) => {
+  const job = await db.transaction(async (tx) => {
     await tx
       .update(quotes)
       .set({ status: "accepted", respondedAt: new Date(), updatedAt: new Date() })
@@ -48,20 +49,27 @@ export async function acceptQuote(formData: FormData) {
         cancellationWindowHours,
       })
       .returning();
+    return job;
+  });
 
-    // Simulates the stubbed Stripe manual-capture authorization succeeding
-    // — no real charge fires (Stripe is stub-by-default), but the escrow
-    // state is recorded so the rest of the payment/escrow flow has real
-    // data to work against.
-    await tx.insert(payments).values({
-      jobId: job.id,
-      ownerId: quote.ownerId,
-      providerId: quote.providerId,
-      providerUserId: quote.providerUserId,
-      mode: paymentMode,
-      amountCents: quote.quotedAmountCents,
-      escrowStatus: paymentMode === "in_app" ? "authorized" : "not_applicable",
-    });
+  // Manual-capture authorization: holds the funds now, captured later
+  // (on job completion) and transferred to the provider on escrow release.
+  // Stripe is stub-by-default, so this doesn't move real money without
+  // live keys — see src/lib/integrations/registry.ts.
+  const authorization =
+    paymentMode === "in_app" && quote.quotedAmountCents
+      ? await connectProvider.authorizePayment({ jobId: job.id, amountCents: quote.quotedAmountCents })
+      : null;
+
+  await db.insert(payments).values({
+    jobId: job.id,
+    ownerId: quote.ownerId,
+    providerId: quote.providerId,
+    providerUserId: quote.providerUserId,
+    mode: paymentMode,
+    amountCents: quote.quotedAmountCents,
+    escrowStatus: authorization ? "authorized" : "not_applicable",
+    stripePaymentIntentId: authorization?.paymentIntentId,
   });
 
   revalidatePath("/owner/jobs");

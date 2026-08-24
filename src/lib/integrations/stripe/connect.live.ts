@@ -28,23 +28,33 @@ export const connectLive: ConnectPayoutsProvider = {
     });
     return { paymentIntentId: paymentIntent.id };
   },
-  async capturePayment(paymentIntentId) {
+  async capturePayment(paymentIntentId, amountCents) {
     const stripe = getStripeClient();
-    await stripe.paymentIntents.capture(paymentIntentId);
+    // Capturing less than the authorized amount auto-releases the
+    // remainder of the hold back to the customer's card — this is how a
+    // late-cancellation fee (capture only the fee) works without a
+    // separate "void the rest" call.
+    await stripe.paymentIntents.capture(
+      paymentIntentId,
+      amountCents ? { amount_to_capture: amountCents } : undefined,
+    );
   },
-  async releaseToProvider(paymentIntentId) {
+  async releaseToProvider(paymentIntentId, amountCents) {
     const stripe = getStripeClient();
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const transfer = await stripe.transfers.create({
-      amount: paymentIntent.amount_received,
+      amount: amountCents ?? paymentIntent.amount_received,
       currency: paymentIntent.currency,
       destination: paymentIntent.transfer_data?.destination as string,
       source_transaction: (paymentIntent.latest_charge as string) ?? undefined,
     });
     return { transferId: transfer.id };
   },
-  async refund(paymentIntentId) {
+  async refund(paymentIntentId, amountCents) {
     const stripe = getStripeClient();
-    await stripe.refunds.create({ payment_intent: paymentIntentId });
+    await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      ...(amountCents ? { amount: amountCents } : {}),
+    });
   },
 };

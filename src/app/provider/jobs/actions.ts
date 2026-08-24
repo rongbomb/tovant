@@ -7,6 +7,8 @@ import { db } from "@/db";
 import { jobs, payments } from "@/db/schema";
 import { requireRole } from "@/lib/auth/require-role";
 import { getSiteSettingHours } from "@/lib/site-settings";
+import { connectProvider } from "@/lib/integrations/registry";
+import { notifyUser } from "@/lib/notifications/notify";
 
 const NEXT_STATUS: Record<string, string> = {
   scheduled: "confirmed",
@@ -30,6 +32,14 @@ export async function advanceJob(formData: FormData) {
 
   const autoReleaseHours =
     next === "completed" ? await getSiteSettingHours("escrow_auto_release_hours") : null;
+  const payment =
+    next === "completed" ? await db.query.payments.findFirst({ where: eq(payments.jobId, jobId) }) : null;
+
+  // Capture happens outside the tx below (it's an external call) — done
+  // first so the DB only ever records a capture that actually happened.
+  if (payment && payment.mode === "in_app" && payment.stripePaymentIntentId) {
+    await connectProvider.capturePayment(payment.stripePaymentIntentId);
+  }
 
   await db.transaction(async (tx) => {
     await tx
@@ -43,17 +53,34 @@ export async function advanceJob(formData: FormData) {
 
     // Wires CLAUDE.md's documented escrow rule: auto-release (default 72h,
     // admin-configurable at /admin/settings) from the moment the provider
-    // marks the job complete, unless a dispute is opened. Actually
-    // releasing the escrow (owner manual confirm, or a cron sweeping
-    // autoReleaseAt) is separate follow-up work — this just records the
-    // timestamps a release worker would act on.
+    // marks the job complete, unless a dispute is opened. The cron route
+    // (src/app/api/cron/release-escrow/route.ts) is what actually sweeps
+    // autoReleaseAt; this just records the timestamp it acts on.
     if (next === "completed" && autoReleaseHours !== null) {
       const now = new Date();
       const autoReleaseAt = new Date(now.getTime() + autoReleaseHours * 60 * 60 * 1000);
       await tx
         .update(payments)
-        .set({ providerMarkedCompleteAt: now, autoReleaseAt, updatedAt: now })
+        .set({
+          providerMarkedCompleteAt: now,
+          autoReleaseAt,
+          escrowStatus: payment?.mode === "in_app" ? "captured" : payment?.escrowStatus,
+          updatedAt: now,
+        })
         .where(eq(payments.jobId, jobId));
+    }
+
+    if (next === "completed") {
+      await notifyUser(
+        {
+          userId: job.ownerId,
+          type: "job.completed",
+          title: "Job marked complete",
+          body: "Your provider marked this job complete. Confirm to release payment now, or it auto-releases automatically.",
+          link: `/owner/jobs/${jobId}`,
+        },
+        tx,
+      );
     }
   });
 

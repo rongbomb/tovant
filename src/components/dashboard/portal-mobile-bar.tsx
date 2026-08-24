@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/home/logo-mark";
 import { DesktopThemeToggle } from "@/components/home/theme-toggle";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { authClient } from "@/lib/auth/auth-client";
 
 export function PortalMobileBar() {
@@ -21,6 +22,7 @@ export function PortalMobileBar() {
         <LogoMark />
       </Link>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <NotificationBell />
         <DesktopThemeToggle />
         <button
           type="button"

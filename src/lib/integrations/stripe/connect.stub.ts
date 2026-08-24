@@ -18,15 +18,21 @@ export const connectStub: ConnectPayoutsProvider = {
     );
     return { paymentIntentId: `stub_pi_${counter}` };
   },
-  async capturePayment(paymentIntentId) {
-    console.log(`[stub:stripe-connect] capturePayment ${paymentIntentId}`);
+  async capturePayment(paymentIntentId, amountCents) {
+    console.log(
+      `[stub:stripe-connect] capturePayment ${paymentIntentId}${amountCents ? ` ($${(amountCents / 100).toFixed(2)} of authorized amount)` : " (full amount)"}`,
+    );
   },
-  async releaseToProvider(paymentIntentId) {
+  async releaseToProvider(paymentIntentId, amountCents) {
     counter += 1;
-    console.log(`[stub:stripe-connect] releaseToProvider ${paymentIntentId}`);
+    console.log(
+      `[stub:stripe-connect] releaseToProvider ${paymentIntentId}${amountCents ? ` $${(amountCents / 100).toFixed(2)}` : " (full captured amount)"}`,
+    );
     return { transferId: `stub_tr_${counter}` };
   },
-  async refund(paymentIntentId) {
-    console.log(`[stub:stripe-connect] refund ${paymentIntentId}`);
+  async refund(paymentIntentId, amountCents) {
+    console.log(
+      `[stub:stripe-connect] refund ${paymentIntentId}${amountCents ? ` $${(amountCents / 100).toFixed(2)}` : " (full amount)"}`,
+    );
   },
 };

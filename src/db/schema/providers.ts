@@ -48,6 +48,11 @@ export const providerProfiles = pgTable("provider_profiles", {
   profileViewCount: integer("profile_view_count").notNull().default(0),
   stripeConnectAccountId: text("stripe_connect_account_id"),
   stripeConnectStatus: text("stripe_connect_status"),
+  // Distinct from stripeConnectAccountId above: this is the provider as a
+  // Stripe *Customer* being charged for leads, not as a Connect payout
+  // destination. Null until the provider has a payment method on file —
+  // live per-lead billing has nothing to charge until then.
+  stripeCustomerId: text("stripe_customer_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

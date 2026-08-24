@@ -16,6 +16,11 @@ export interface OwnerVehicle {
 
 const ADD_VEHICLE = "__add_vehicle__";
 
+export interface CategoryOption {
+  id: string;
+  label: string;
+}
+
 export function QuoteRequestCard({
   providerId,
   category,
@@ -28,7 +33,7 @@ export function QuoteRequestCard({
 }: {
   providerId: string;
   category: string | null;
-  categories: string[];
+  categories: CategoryOption[];
   isLoggedIn: boolean;
   vehicles: OwnerVehicle[];
   ratingAvg: number | null;
@@ -102,13 +107,13 @@ export function QuoteRequestCard({
         <input type="hidden" name="providerId" value={providerId} />
 
         {categories.length > 1 ? (
-          <Select label="Category" name="category" defaultValue={category ?? categories[0]}>
+          <Select label="Category" name="category" defaultValue={category ?? categories[0]?.id}>
             {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c.id} value={c.id}>{c.label}</option>
             ))}
           </Select>
         ) : (
-          <input type="hidden" name="category" value={category ?? categories[0] ?? ""} />
+          <input type="hidden" name="category" value={category ?? categories[0]?.id ?? ""} />
         )}
 
         <Select

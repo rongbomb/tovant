@@ -102,6 +102,9 @@ export default function SignupPage() {
         <Button type="submit" disabled={submitting} style={{ width: "100%", marginTop: 8 }}>
           {submitting ? "Creating account…" : "Continue"}
         </Button>
+        <p className="text-center text-xs" style={{ color: "var(--home-text-muted)" }}>
+          We&apos;ll send a verification email — no need to confirm it before you get started.
+        </p>
         <p className="text-center text-sm" style={{ color: "var(--home-text-muted)" }}>
           Already have an account?{" "}
           <a href="/login" style={{ color: "var(--home-accent)", fontWeight: 600 }}>

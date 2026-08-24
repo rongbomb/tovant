@@ -4,8 +4,11 @@ import "server-only";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { providerProfiles, providerCategories, quotes, vehicles } from "@/db/schema";
+import { providerProfiles, providerCategories, quotes, vehicles, leadCharges } from "@/db/schema";
 import { getSession } from "@/lib/auth/get-session";
+import { getSiteSettingValue } from "@/lib/site-settings";
+import { leadBillingProvider } from "@/lib/integrations/registry";
+import { notifyUser } from "@/lib/notifications/notify";
 
 export async function requestQuote(formData: FormData) {
   const session = await getSession();
@@ -60,15 +63,47 @@ export async function requestQuote(formData: FormData) {
     }
   }
 
-  await db.insert(quotes).values({
-    ownerId: session.user.id,
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      ownerId: session.user.id,
+      providerId: provider.id,
+      providerUserId: provider.userId,
+      category: submittedCategory,
+      description,
+      vehicleId,
+      vehicleInfo,
+      serviceMode: provider.serviceMode,
+      status: "requested",
+    })
+    .returning();
+
+  // Per-lead charging (CLAUDE.md monetization): the provider is charged the
+  // instant a quote request is sent, independent of whether they ever
+  // respond. Charged after the quote row exists (not inside one
+  // transaction with it) so a billing hiccup never blocks the owner's
+  // request from going through — the lead still lands either way.
+  const feeCents = await getSiteSettingValue("per_lead_fee_cents");
+  const charge = await leadBillingProvider.chargeLead({
+    providerId: provider.id,
+    quoteId: quote.id,
+    amountCents: feeCents,
+    stripeCustomerId: provider.stripeCustomerId,
+  });
+  await db.insert(leadCharges).values({
+    quoteId: quote.id,
     providerId: provider.id,
     providerUserId: provider.userId,
-    category: submittedCategory,
-    description,
-    vehicleId,
-    vehicleInfo,
-    serviceMode: provider.serviceMode,
-    status: "requested",
+    amountCents: feeCents,
+    status: charge.status,
+    stripeChargeId: charge.chargeId || null,
+  });
+
+  await notifyUser({
+    userId: provider.userId,
+    type: "lead.new",
+    title: "New lead",
+    body: `A new quote request came in${provider.businessName ? "" : " for your shop"} — you were charged $${(feeCents / 100).toFixed(2)} for this lead.`,
+    link: "/provider/dashboard",
   });
 }

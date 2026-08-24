@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogoMark } from "@/components/home/logo-mark";
 import { DesktopThemeToggle } from "@/components/home/theme-toggle";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { authClient } from "@/lib/auth/auth-client";
 
 export interface PortalNavItem {
@@ -26,10 +27,13 @@ export function PortalSidebar({ navItems }: { navItems: PortalNavItem[] }) {
 
   return (
     <aside className="portal-sidebar">
-      <Link href="/" className="portal-sidebar-logo">
-        <LogoMark />
-        TOVANT
-      </Link>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Link href="/" className="portal-sidebar-logo">
+          <LogoMark />
+          TOVANT
+        </Link>
+        <NotificationBell />
+      </div>
       <nav className="portal-sidebar-nav">
         {navItems.map((item) => {
           const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);

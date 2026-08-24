@@ -3,6 +3,8 @@ import { billingStub } from "./stripe/billing.stub";
 import { billingLive } from "./stripe/billing.live";
 import { connectStub } from "./stripe/connect.stub";
 import { connectLive } from "./stripe/connect.live";
+import { leadBillingStub } from "./stripe/lead-billing.stub";
+import { leadBillingLive } from "./stripe/lead-billing.live";
 import { identityStub } from "./stripe/identity.stub";
 import { identityLive } from "./stripe/identity.live";
 import { checkrStub } from "./checkr/checkr.stub";
@@ -27,6 +29,7 @@ function pick<T>(mode: string | undefined, stub: T, live: T): T {
 
 export const billingProvider = pick(process.env.STRIPE_MODE, billingStub, billingLive);
 export const connectProvider = pick(process.env.STRIPE_MODE, connectStub, connectLive);
+export const leadBillingProvider = pick(process.env.STRIPE_MODE, leadBillingStub, leadBillingLive);
 export const identityProvider = pick(process.env.STRIPE_MODE, identityStub, identityLive);
 export const backgroundCheckProvider = pick(process.env.CHECKR_MODE, checkrStub, checkrLive);
 export const smsProvider = pick(process.env.TWILIO_MODE, smsStub, smsLive);

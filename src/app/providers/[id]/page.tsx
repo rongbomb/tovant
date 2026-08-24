@@ -16,6 +16,7 @@ import {
 import { getSession } from "@/lib/auth/get-session";
 import { getProviderStats } from "@/lib/provider-stats";
 import { getServiceOfferingLabelMap } from "@/lib/service-offerings";
+import { getCategoryLabelMap, getSpecialtyLabelMap } from "@/lib/taxonomy-labels";
 import { RatingBars } from "@/components/ui/rating-bars";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -29,12 +30,6 @@ const VERIFICATION_LABEL: Record<string, string> = {
   insurance: "Insured",
   background_check: "Background checked",
   specialty_credential: "Specialty certified",
-};
-
-const SPECIALTY_LABEL: Record<string, string> = {
-  ev: "EV high-voltage certified",
-  motorcycle_powersports: "Motorcycle & powersports certified",
-  commercial_fleet: "Commercial fleet certified",
 };
 
 const STATUS_TONE: Record<string, "success" | "neutral" | "danger"> = {
@@ -70,8 +65,19 @@ export default async function ProviderProfilePage({
   const role = (session?.user as { role?: string } | undefined)?.role;
   const isOwner = !!session && role === "owner";
 
-  const [categories, specialties, verifications, offerings, galleryPhotos, reviewRows, stats, ownerVehicles, offeringLabels] =
-    await Promise.all([
+  const [
+    categories,
+    specialties,
+    verifications,
+    offerings,
+    galleryPhotos,
+    reviewRows,
+    stats,
+    ownerVehicles,
+    offeringLabels,
+    categoryLabels,
+    specialtyLabels,
+  ] = await Promise.all([
       db.select().from(providerCategories).where(eq(providerCategories.providerId, provider.id)),
       db.select().from(providerSpecialties).where(eq(providerSpecialties.providerId, provider.id)),
       db.select().from(verificationRecords).where(eq(verificationRecords.providerId, provider.id)),
@@ -106,9 +112,15 @@ export default async function ProviderProfilePage({
         ? db.select().from(vehicles).where(eq(vehicles.ownerId, session.user.id))
         : Promise.resolve([]),
       getServiceOfferingLabelMap(),
+      getCategoryLabelMap(),
+      getSpecialtyLabelMap(),
     ]);
 
-  const categoryNames = categories.map((c) => c.category);
+  const categoryNames = categories.map((c) => categoryLabels[c.category] ?? c.category);
+  const categoryOptions = categories.map((c) => ({
+    id: c.category,
+    label: categoryLabels[c.category] ?? c.category,
+  }));
   const badges = [
     ...verifications
       .filter((v) => v.status === "approved" && v.type !== "specialty_credential")
@@ -119,7 +131,7 @@ export default async function ProviderProfilePage({
           (v) => v.id === s.verificationRecordId && v.status === "approved",
         ),
       )
-      .map((s) => SPECIALTY_LABEL[s.specialty] ?? s.specialty),
+      .map((s) => specialtyLabels[s.specialty] ?? s.specialty),
   ];
 
   return (
@@ -128,7 +140,7 @@ export default async function ProviderProfilePage({
       <main className="mx-auto max-w-5xl px-6" style={{ paddingTop: 140, paddingBottom: 80 }}>
         <p className="mb-6 text-sm" style={{ color: "var(--home-text-muted)" }}>
           <a href="/discover" style={{ color: "inherit" }}>Find a pro</a>
-          {categoryNames[0] ? <> &nbsp;/&nbsp; <span className="capitalize">{categoryNames[0]}</span></> : null}
+          {categoryNames[0] ? <> &nbsp;/&nbsp; <span>{categoryNames[0]}</span></> : null}
           &nbsp;/&nbsp; {provider.businessName ?? "Unnamed provider"}
         </p>
 
@@ -150,7 +162,7 @@ export default async function ProviderProfilePage({
               ) : null}
             </div>
             <p className="mt-1.5 text-[15px]" style={{ color: "var(--home-text-muted)" }}>
-              {categoryNames.map((c) => c[0].toUpperCase() + c.slice(1)).join(", ")}
+              {categoryNames.join(", ")}
               {provider.serviceMode !== "shop" ? " · Mobile" : ""}
               {provider.serviceMode !== "mobile" ? " · Shop" : ""}
             </p>
@@ -287,7 +299,7 @@ export default async function ProviderProfilePage({
                         <div key={v.id} className="home-card flex items-start gap-3">
                           <div className="flex-1">
                             <div className="text-[13.5px] font-bold">
-                              {v.specialty ? SPECIALTY_LABEL[v.specialty] ?? v.specialty : VERIFICATION_LABEL[v.type]}
+                              {v.specialty ? specialtyLabels[v.specialty] ?? v.specialty : VERIFICATION_LABEL[v.type]}
                             </div>
                             <div
                               className="mt-1 text-[11px]"
@@ -309,8 +321,8 @@ export default async function ProviderProfilePage({
 
           <QuoteRequestCard
             providerId={provider.id}
-            category={categoryNames[0] ?? null}
-            categories={categoryNames}
+            category={categoryOptions[0]?.id ?? null}
+            categories={categoryOptions}
             isLoggedIn={isOwner}
             ratingAvg={provider.ratingAvg ? Number(provider.ratingAvg) : null}
             hourlyRateCents={provider.hourlyRateCents}
